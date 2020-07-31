@@ -10,7 +10,7 @@ const cookieOptions = {
     sameSite: true,
     signed: true,
     secure: process.env.NODE_ENV === "development" ? false : true
-}
+};
 
 const logInViaGoogle = async (code: string, token: string, db: Database, res: Response): Promise<User | undefined> => {
     const { user } = await Google.logIn(code);
@@ -73,7 +73,7 @@ const logInViaGoogle = async (code: string, token: string, db: Database, res: Re
     res.cookie("viewer", userId, {
         ...cookieOptions,
         maxAge: 365 * 24 * 60 * 60 * 1000
-    })
+    });
 
     return viewer;
 };
@@ -89,9 +89,9 @@ const logInViaCookie = async (
       { $set: { token } },
       { returnOriginal: false }
     );
-
+  
     let viewer = updateRes.value;
-
+  
     if (!viewer) {
       res.clearCookie("viewer", cookieOptions);
     }
@@ -113,26 +113,29 @@ export const viwerResolvers: IResolvers = {
         logIn: async (
             _root: undefined,
             { input }: LogInArgs,
-            { db, req, res }: {db: Database, req: Request, res: Response}
-            ): Promise<Viewer> => {
+            { db, req, res }: { db: Database; req: Request; res: Response }
+          ): Promise<Viewer> => {
             try {
-                const code = input ? input.code : null;
-                const token =  crypto.randomBytes(16).toString("hex");
-                const viewer = code ? await logInViaGoogle(code, token, db, res) : await logInViaCookie(token, db, req, res);
-
-                if (!viewer) {
-                    return { didRequest: true }
-                }
-
-                return {
-                    _id: viewer._id,
-                    token: viewer.token,
-                    avatar: viewer.avatar,
-                    walletId: viewer.walletId,
-                    didRequest: true
-                };
+              const code = input ? input.code : null;
+              const token = crypto.randomBytes(16).toString("hex");
+      
+              const viewer: User | undefined = code
+                ? await logInViaGoogle(code, token, db, res)
+                : await logInViaCookie(token, db, req, res);
+      
+              if (!viewer) {
+                return { didRequest: true };
+              }
+      
+              return {
+                _id: viewer._id,
+                token: viewer.token,
+                avatar: viewer.avatar,
+                walletId: viewer.walletId,
+                didRequest: true
+              };
             } catch (error) {
-                throw new Error(`Failed to log in: ${error}`);
+              throw new Error(`Failed to log in: ${error}`);
             }
         },
         logOut: (_root: undefined, _args: {}, { res }: { res: Response}): Viewer => {
